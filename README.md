@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio From 1 to 200 (Google TTS)</title>
+    <title>Audio From 1 to 200 (Stable)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -102,7 +102,7 @@
                 <i class="fas fa-headphones-alt"></i>
             </div>
             <h2 class="text-3xl font-bold text-white mb-4">Vocabulary 1-200</h2>
-            <p class="text-rose-200 mb-8">Giọng Google Translate (Anh - Anh)</p>
+            <p class="text-rose-200 mb-8">Bản ổn định (Mọi thiết bị)</p>
             <button onclick="startApp()" class="px-8 py-4 bg-rose-600 text-white text-xl font-bold rounded-2xl shadow-lg hover:bg-rose-500 hover:scale-105 transition transform">
                 <i class="fas fa-play mr-2"></i> Bắt đầu học
             </button>
@@ -255,26 +255,21 @@
     <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all scale-100">
             <h3 class="text-xl font-bold text-gray-800 mb-4">Cài đặt</h3>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Nguồn âm thanh:</label>
-                <div class="p-3 bg-rose-50 text-rose-700 rounded-lg text-sm border border-rose-200 font-semibold">
-                    <i class="fab fa-google mr-1"></i> Google Translate (Anh - Anh)
-                </div>
-            </div>
+            
              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Giọng dự phòng (Khi mất mạng):</label>
-                <select id="voiceSelect" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50"><option>Đang tải...</option></select>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Chọn giọng đọc (Hệ thống):</label>
+                <select id="voiceSelect" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-500 outline-none"><option>Đang tải danh sách giọng...</option></select>
+                <p class="text-xs text-gray-500 mt-2 italic">* Nếu giọng chưa hay, hãy thử đổi giọng khác trong danh sách này.</p>
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Tốc độ đọc: <span id="rateValue">0.7</span>x</label>
-                <input type="range" id="rateRange" min="0.5" max="1.5" step="0.1" value="0.7" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600">
+                <input type="range" id="rateRange" min="0.5" max="1.5" step="0.1" value="0.7" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600 cursor-pointer">
             </div>
             <div class="mb-4 flex items-center justify-between">
                 <label class="text-sm font-medium text-gray-700">Tự động phát khi chuyển bài</label>
                 <input type="checkbox" id="autoPlay" class="w-5 h-5 text-rose-600 rounded" checked>
             </div>
-            <button onclick="resetAudioEngine()" class="w-full py-2 mb-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Reset Âm thanh</button>
-            <button onclick="document.getElementById('settingsModal').classList.add('hidden')" class="w-full py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700">Đóng</button>
+            <button onclick="document.getElementById('settingsModal').classList.add('hidden')" class="w-full py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition">Đóng</button>
         </div>
     </div>
 
@@ -615,46 +610,20 @@
         playAudio();
     }
 
-    // --- AUDIO HANDLING ---
+    // --- AUDIO HANDLING (SYSTEM ONLY) ---
 
-    async function playAudio() {
+    function playAudio() {
         const item = currentList[currentIndex];
         const text = item.en;
-        
-        setLoadingState(true);
-
-        try {
-            await playGoogleTTS(text);
-        } catch (error) {
-            console.warn("Google TTS failed, using System Fallback", error);
-            // Fallback to system voice if Google fails (e.g. offline)
-            speakBrowser(text);
-        } finally {
-            setLoadingState(false);
-        }
-    }
-
-    function playGoogleTTS(text) {
-        return new Promise((resolve, reject) => {
-            // Google Translate TTS (client=tw-ob public API)
-            // tl=en-GB -> British English
-            const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en-GB&q=${encodeURIComponent(text)}`;
-            const audio = new Audio(url);
-            
-            const speed = parseFloat(document.getElementById('rateRange').value);
-            audio.playbackRate = speed;
-
-            audio.onended = resolve;
-            audio.onerror = reject;
-            
-            audio.play().catch(reject);
-        });
+        speakBrowser(text);
     }
 
     function speakBrowser(text) {
         if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
         
+        if (voices.length === 0) loadVoices();
+
         const utterance = new SpeechSynthesisUtterance(text);
         
         // Use user selected voice if available
@@ -662,9 +631,33 @@
         if(selectedVoiceName) {
             const voice = voices.find(v => v.name === selectedVoiceName);
             if (voice) utterance.voice = voice;
+        } else {
+             // Fallback to auto-detected British voice
+             // Priority list for British voices
+            const preferredVoices = [
+                "Google UK English Female",
+                "Google UK English Male", 
+                "Microsoft Hazel", 
+                "Microsoft Susan",
+                "Microsoft George",
+                "Daniel"
+            ];
+            let autoVoice = null;
+            for (const name of preferredVoices) {
+                const found = voices.find(v => v.name.includes(name));
+                if (found) { autoVoice = found; break; }
+            }
+            if (!autoVoice) {
+                autoVoice = voices.find(v => v.lang.includes("GB") || v.name.includes("UK") || v.name.includes("Great Britain"));
+            }
+            if(autoVoice) utterance.voice = autoVoice;
+            else utterance.lang = 'en-GB';
         }
 
-        utterance.rate = parseFloat(document.getElementById('rateRange').value);
+        // --- SPEED SETTING ---
+        const speed = parseFloat(document.getElementById('rateRange').value);
+        utterance.rate = speed;
+
         window.speechSynthesis.speak(utterance);
     }
 
@@ -673,8 +666,10 @@
         voices = synth.getVoices();
         
         if(!voiceSelect) return;
+        
         voiceSelect.innerHTML = '';
         
+        // Filter English voices
         const englishVoices = voices.filter(v => v.lang.startsWith('en'));
 
         // Sort: Prioritize "UK/British"
@@ -692,22 +687,25 @@
             voiceSelect.appendChild(option);
         });
 
-        // Smart Select: Default to first (which is British due to sort)
+        // Smart Select in Dropdown
         if (englishVoices.length > 0) {
+            // Auto-select the first voice (which is sorted to be British)
             voiceSelect.value = englishVoices[0].name;
         }
     }
 
-    function setLoadingState(isLoading) {
-        const iconClass = isLoading ? "fas fa-spinner" : "fas fa-volume-up";
-        const btnClass = isLoading ? "cursor-wait opacity-75" : "hover:scale-105";
-        
-        [playBtnFront, playBtnBack].forEach(btn => {
-            const icon = btn.querySelector('i');
-            icon.className = `${iconClass} text-5xl`; 
-            if(isLoading) btn.classList.add('cursor-wait');
-            else btn.classList.remove('cursor-wait');
-        });
+    if (speechSynthesis && speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    voiceSelect.addEventListener('change', () => { if(hasStarted) speakBrowser("Hello."); });
+    rateRange.addEventListener('input', (e) => { rateValue.textContent = e.target.value; });
+
+    function resetAudioEngine() {
+        if (!synth) return;
+        synth.cancel();
+        loadVoices();
+        showToast("Đã reset bộ phát âm thanh.");
     }
 
     // GAME LOGIC
@@ -730,6 +728,7 @@
         updateStatusUI(item.id);
 
         if(autoPlayCheck.checked && shouldPlay && hasStarted) {
+            // Small delay for flip animation before audio
             setTimeout(() => playAudio(), 600);
         }
     }
@@ -848,7 +847,7 @@
                     <p class="text-gray-500 text-sm">${item.vi}</p>
                 </div>
                 <div class="flex gap-2 flex-shrink-0">
-                     <button onclick="playGoogleTTS('${item.en.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition">
+                     <button onclick="speakBrowser('${item.en.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition">
                         <i class="fas fa-volume-up"></i>
                     </button>
                     ${targetState ? 
@@ -869,9 +868,6 @@
             updateStatusUI(id); 
         }
     }
-
-    voiceSelect.addEventListener('change', () => { if(hasStarted) speakBrowser("Hello."); });
-    rateRange.addEventListener('input', (e) => { rateValue.textContent = e.target.value; });
 
     document.addEventListener('keydown', (e) => {
         if(!hasStarted) return;
