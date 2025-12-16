@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio From 1 to 200 (Red Theme)</title>
+    <title>Audio From 1 to 200 (System Voice)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -36,54 +36,64 @@
         .card-back {
             transform: rotateY(180deg);
         }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #fda4af; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #fb7185; 
-        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #fda4af; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #fb7185; }
         
         .tab-active {
-            border-bottom: 2px solid #e11d48; /* Rose-600 */
+            border-bottom: 2px solid #e11d48;
             color: #e11d48;
             font-weight: 700;
         }
-        .tab-inactive {
-            color: #6b7280;
-        }
+        .tab-inactive { color: #6b7280; }
 
         .mode-btn-active {
             background-color: white;
-            color: #881337; /* Rose-900 */
+            color: #881337;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
         .mode-btn-inactive {
             background-color: transparent;
             color: #374151;
         }
-        .mode-btn-inactive:hover {
-            color: #9f1239;
-        }
+        .mode-btn-inactive:hover { color: #9f1239; }
 
-        /* Loading Spinner Animation */
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .fa-spinner {
-            animation: spin 1s linear infinite;
+        .fa-spinner { animation: spin 1s linear infinite; }
+        
+        /* Toast Notification */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
         }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-4">
+
+    <!-- Toast Notification -->
+    <div id="toast">Thông báo</div>
 
     <!-- Start Overlay -->
     <div id="startOverlay" class="fixed inset-0 bg-rose-900 bg-opacity-95 z-50 flex flex-col items-center justify-center transition-opacity duration-500">
@@ -91,9 +101,8 @@
             <div class="mb-6 text-6xl text-rose-400 animate-bounce">
                 <i class="fas fa-headphones-alt"></i>
             </div>
-            <!-- Removed 'AI Audio' text -->
             <h2 class="text-3xl font-bold text-white mb-4">Vocabulary 1-200</h2>
-            <p class="text-rose-200 mb-8">Sử dụng công nghệ giọng nói ElevenLabs</p>
+            <p class="text-rose-200 mb-8">Giọng Anh - Anh (British English)</p>
             <button onclick="startApp()" class="px-8 py-4 bg-rose-600 text-white text-xl font-bold rounded-2xl shadow-lg hover:bg-rose-500 hover:scale-105 transition transform">
                 <i class="fas fa-play mr-2"></i> Bắt đầu học
             </button>
@@ -104,7 +113,6 @@
     <header class="w-full max-w-2xl mb-6 bg-white p-4 rounded-xl shadow-lg bg-opacity-90 backdrop-blur-sm border border-rose-100">
         <div class="flex justify-between items-center mb-3">
             <div>
-                <!-- Removed '(AI)' text -->
                 <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-fire text-rose-600 mr-2"></i>Luyện Nghe</h1>
                 <p class="text-xs text-gray-500 mt-1">
                     <span id="learnedCount" class="text-green-600 font-bold">0</span> thuộc / 
@@ -146,12 +154,11 @@
                 
                 <div class="mb-8 relative">
                     <div class="absolute -inset-4 bg-rose-100 rounded-full animate-pulse opacity-50"></div>
-                    <button onclick="playAudio()" id="playBtnFront" class="relative w-32 h-32 bg-rose-600 rounded-full flex items-center justify-center text-white shadow-xl hover:bg-rose-700 hover:scale-105 transition transform duration-200 group">
+                    <button onclick="playAudio()" class="relative w-32 h-32 bg-rose-600 rounded-full flex items-center justify-center text-white shadow-xl hover:bg-rose-700 hover:scale-105 transition transform duration-200 group">
                         <i class="fas fa-volume-up text-5xl group-hover:animate-bounce"></i>
                     </button>
                 </div>
                 
-                <!-- Removed '(AI Voice)' text -->
                 <p class="text-gray-500 text-center mb-6 text-lg">Nhấn loa để nghe, sau đó đoán từ.</p>
 
                 <button onclick="revealCard()" class="px-8 py-3 bg-white border-2 border-rose-600 text-rose-600 font-bold rounded-full hover:bg-rose-50 transition shadow-md">
@@ -165,7 +172,7 @@
                     #<span id="currentId-back">1</span>
                 </div>
                 <div class="absolute top-6 right-6">
-                    <button onclick="playAudio()" id="playBtnBack" class="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center text-rose-600 hover:bg-rose-200 transition">
+                    <button onclick="playAudio()" class="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center text-rose-600 hover:bg-rose-200 transition">
                         <i class="fas fa-volume-up"></i>
                     </button>
                 </div>
@@ -249,33 +256,24 @@
         <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all scale-100">
             <h3 class="text-xl font-bold text-gray-800 mb-4">Cài đặt</h3>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Nguồn âm thanh:</label>
-                <div class="p-3 bg-rose-50 text-rose-700 rounded-lg text-sm border border-rose-200">
-                    <!-- Removed 'AI' text -->
-                    <i class="fas fa-check-circle mr-1"></i> ElevenLabs (Đã kích hoạt)
-                </div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Giọng đọc (Hệ thống):</label>
+                <select id="voiceSelect" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50"><option>Đang tải...</option></select>
+                <p class="text-xs text-gray-500 mt-2 italic">Ưu tiên: Google UK, Microsoft Hazel, Daniel, British English.</p>
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tốc độ đọc: <span id="rateValue">0.8</span>x</label>
-                <input type="range" id="rateRange" min="0.5" max="1.5" step="0.1" value="0.8" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tốc độ đọc: <span id="rateValue">0.7</span>x</label>
+                <input type="range" id="rateRange" min="0.5" max="1.5" step="0.1" value="0.7" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600">
             </div>
             <div class="mb-4 flex items-center justify-between">
                 <label class="text-sm font-medium text-gray-700">Tự động phát khi chuyển bài</label>
                 <input type="checkbox" id="autoPlay" class="w-5 h-5 text-rose-600 rounded" checked>
             </div>
-            <button onclick="resetAudioEngine()" class="w-full py-2 mb-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Reset Âm thanh</button>
             <button onclick="document.getElementById('settingsModal').classList.add('hidden')" class="w-full py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700">Đóng</button>
         </div>
     </div>
 
 <script>
-    // --- ELEVENLABS CONFIGURATION ---
-    const ELEVENLABS_API_KEY = "72823fc092de8d14602cbb1954e366c35c4d717d52b69eaca5118acaa5569a60";
-    const ELEVENLABS_VOICE_ID = "AeRdCCKzvd23BpJoofzx"; 
-    
-    // Audio Cache to save credits (session based)
-    // FIX: Only declare this once here. Removed the second 'let audioCache' below.
-    const audioCache = {};
+    // NO ELEVENLABS API KEY NEEDED
 
     // DATA SOURCE: 200 WORDS
     const vocabularyList = [
@@ -491,7 +489,7 @@
     let isFilteredMode = false;
     let synth = window.speechSynthesis;
     let voices = [];
-    let audioContext; 
+    let currentListTab = 'notLearned';
 
     // DOM ELEMENTS
     const flashcard = document.getElementById('flashcard');
@@ -511,6 +509,7 @@
     const autoPlayCheck = document.getElementById('autoPlay');
     const startOverlay = document.getElementById('startOverlay');
     const statusBadgeFront = document.getElementById('statusBadgeFront');
+    const toast = document.getElementById('toast');
     
     const totalCountDisplay = document.getElementById('totalCountDisplay');
     const notLearnedCountDisplay = document.getElementById('notLearnedCountDisplay');
@@ -526,13 +525,31 @@
     const tabLearned = document.getElementById('tabLearned');
     const modalCountNotLearned = document.getElementById('modalCountNotLearned');
     const modalCountLearned = document.getElementById('modalCountLearned');
-    let currentListTab = 'notLearned';
 
+    // INITIALIZATION
     window.onload = function() {
         loadProgress();
         updateStats(); 
+        loadVoices();
+        
+        let voiceLoadAttempts = 0;
+        const voiceInterval = setInterval(() => {
+            if (voices.length === 0 && voiceLoadAttempts < 10) {
+                loadVoices();
+                voiceLoadAttempts++;
+            } else {
+                clearInterval(voiceInterval);
+            }
+        }, 500);
+
         updateCard(false); 
     };
+
+    function showToast(message) {
+        toast.textContent = message;
+        toast.className = "show";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    }
 
     function loadProgress() {
         const saved = localStorage.getItem('vocab_progress_1_200');
@@ -577,7 +594,7 @@
         const notLearnedList = vocabularyList.filter(item => progressMap[item.id] !== true);
         
         if (notLearnedList.length === 0) {
-            alert("Chúc mừng! Bạn đã thuộc hết 200 từ vựng.");
+            showToast("Chúc mừng! Bạn đã thuộc hết 200 từ vựng.");
             return;
         }
 
@@ -599,85 +616,107 @@
         playAudio();
     }
 
-    // --- AUDIO HANDLING ---
+    // --- AUDIO HANDLING (SYSTEM ONLY) ---
 
-    async function playAudio() {
+    function playAudio() {
         const item = currentList[currentIndex];
         const text = item.en;
-        
-        // Show Loading State
-        setLoadingState(true);
-
-        try {
-            // 1. Check Cache first
-            if (audioCache[text]) {
-                await playBlob(audioCache[text]);
-                setLoadingState(false);
-                return;
-            }
-
-            // 2. Try ElevenLabs API
-            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
-                method: 'POST',
-                headers: {
-                    'xi-api-key': ELEVENLABS_API_KEY,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    text: text,
-                    model_id: "eleven_monolingual_v1",
-                    voice_settings: { stability: 0.5, similarity_boost: 0.5 }
-                })
-            });
-
-            if (!response.ok) throw new Error('ElevenLabs API failed');
-
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            audioCache[text] = url; // Cache it
-            await playBlob(url);
-
-        } catch (error) {
-            console.warn("Falling back to Browser TTS", error);
-            // 3. Fallback to Browser TTS
-            speakBrowser(text);
-        } finally {
-            setLoadingState(false);
-        }
-    }
-
-    function playBlob(url) {
-        return new Promise((resolve) => {
-            const audio = new Audio(url);
-            // Apply speed from slider
-            const speed = parseFloat(document.getElementById('rateRange').value);
-            audio.playbackRate = speed;
-            
-            audio.onended = resolve;
-            audio.play();
-        });
+        speakBrowser(text);
     }
 
     function speakBrowser(text) {
         if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
+        
+        if (voices.length === 0) loadVoices();
+
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        utterance.rate = parseFloat(document.getElementById('rateRange').value);
+        
+        // --- STRICT BRITISH VOICE SELECTION ---
+        const preferredVoices = [
+            "Google UK English Female",
+            "Google UK English Male", 
+            "Microsoft Hazel", 
+            "Microsoft Susan",
+            "Microsoft George",
+            "Daniel"
+        ];
+
+        let selectedVoice = null;
+        
+        // 1. Try preferred names first
+        for (const name of preferredVoices) {
+            const found = voices.find(v => v.name.includes(name));
+            if (found) {
+                selectedVoice = found;
+                break;
+            }
+        }
+
+        // 2. Try generic 'GB' or 'UK'
+        if (!selectedVoice) {
+            selectedVoice = voices.find(v => v.lang.includes("GB") || v.name.includes("UK") || v.name.includes("Great Britain"));
+        }
+
+        if(selectedVoice) {
+            utterance.voice = selectedVoice;
+        } else {
+            // Fallback lang code
+            utterance.lang = 'en-GB'; 
+        }
+
+        // --- SPEED SETTING ---
+        const speed = parseFloat(document.getElementById('rateRange').value);
+        utterance.rate = speed;
+
         window.speechSynthesis.speak(utterance);
     }
 
-    function setLoadingState(isLoading) {
-        const iconClass = isLoading ? "fas fa-spinner" : "fas fa-volume-up";
-        const btnClass = isLoading ? "cursor-wait opacity-75" : "hover:scale-105";
+    function loadVoices() {
+        if (!synth) return;
+        voices = synth.getVoices();
         
-        // Update both buttons
-        [playBtnFront, playBtnBack].forEach(btn => {
-            const icon = btn.querySelector('i');
-            icon.className = `${iconClass} text-5xl`; // Reset size
-            if(isLoading) btn.classList.add('cursor-wait');
-            else btn.classList.remove('cursor-wait');
+        const voiceSelect = document.getElementById('voiceSelect');
+        if(!voiceSelect) return;
+        
+        voiceSelect.innerHTML = '';
+        
+        // Filter English voices
+        const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+
+        // Sort: Prioritize "UK/British"
+        englishVoices.sort((a, b) => {
+            const isGB = (name) => name.includes('UK') || name.includes('Great Britain') || name.includes('British') || name.includes('GB');
+            if (isGB(a.name) && !isGB(b.name)) return -1;
+            if (!isGB(a.name) && isGB(b.name)) return 1;
+            return 0;
         });
+
+        englishVoices.forEach(voice => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.value = voice.name;
+            voiceSelect.appendChild(option);
+        });
+
+        // Smart Select in Dropdown
+        if (englishVoices.length > 0) {
+            voiceSelect.value = englishVoices[0].name;
+        }
+    }
+
+    if (speechSynthesis && speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    voiceSelect.addEventListener('change', () => { if(hasStarted) speakBrowser("Hello."); });
+    rateRange.addEventListener('input', (e) => { rateValue.textContent = e.target.value; });
+
+    function resetAudioEngine() {
+        if (!synth) return;
+        synth.cancel();
+        loadVoices();
+        showToast("Đã reset bộ phát âm thanh.");
     }
 
     // GAME LOGIC
@@ -708,14 +747,14 @@
         const isLearned = progressMap[id] === true;
         
         if (isLearned) {
-            btnLearned.classList.add('bg-emerald-100', 'border-emerald-400');
+            btnLearned.classList.add('bg-rose-100', 'border-rose-400');
             btnNotLearned.classList.remove('bg-red-100', 'border-red-400');
             statusBadgeFront.textContent = "Đã thuộc";
-            statusBadgeFront.className = "absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200";
+            statusBadgeFront.className = "absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200";
             statusBadgeFront.classList.remove('hidden');
         } else {
             btnNotLearned.classList.add('bg-red-100', 'border-red-400');
-            btnLearned.classList.remove('bg-emerald-100', 'border-emerald-400');
+            btnLearned.classList.remove('bg-rose-100', 'border-rose-400');
             if(progressMap[id] === false) {
                  statusBadgeFront.textContent = "Chưa thuộc";
                  statusBadgeFront.className = "absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200";
@@ -818,7 +857,7 @@
                     <p class="text-gray-500 text-sm">${item.vi}</p>
                 </div>
                 <div class="flex gap-2 flex-shrink-0">
-                     <button onclick="playListAudio('${item.en.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition">
+                     <button onclick="speakBrowser('${item.en.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition">
                         <i class="fas fa-volume-up"></i>
                     </button>
                     ${targetState ? 
@@ -837,19 +876,6 @@
         renderList(); 
         if (currentList[currentIndex].id === id) {
             updateStatusUI(id); 
-        }
-    }
-
-    // Modified to use the new playAudio logic
-    async function playListAudio(text) {
-        try {
-            if (audioCache[text]) {
-                await playBlob(audioCache[text]);
-                return;
-            }
-            speakBrowser(text); 
-        } catch (e) {
-            speakBrowser(text);
         }
     }
 
