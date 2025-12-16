@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio From 1 to 200 (Red Theme)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            /* Red Theme */
+            background: linear-gradient(135deg, #fff1f2 0%, #fecdd3 100%);
+            min-height: 100vh;
+        }
+        .card-container {
+            perspective: 2000px;
+        }
+        .flip-card-inner {
+            transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .flip-card-inner.revealed {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fda4af; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #fb7185; 
+        }
+        
+        .tab-active {
+            border-bottom: 2px solid #e11d48; /* Rose-600 */
+            color: #e11d48;
+            font-weight: 700;
+        }
+        .tab-inactive {
+            color: #6b7280;
+        }
+
+        .mode-btn-active {
+            background-color: white;
+            color: #881337; /* Rose-900 */
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .mode-btn-inactive {
+            background-color: transparent;
+            color: #374151;
+        }
+        .mode-btn-inactive:hover {
+            color: #9f1239;
+        }
+
+        /* Loading Spinner Animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fa-spinner {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4">
+
+    <!-- Start Overlay -->
+    <div id="startOverlay" class="fixed inset-0 bg-rose-900 bg-opacity-95 z-50 flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="text-center p-6 max-w-md">
+            <div class="mb-6 text-6xl text-rose-400 animate-bounce">
+                <i class="fas fa-headphones-alt"></i>
+            </div>
+            <!-- Removed 'AI Audio' text -->
+            <h2 class="text-3xl font-bold text-white mb-4">Vocabulary 1-200</h2>
+            <p class="text-rose-200 mb-8">Sử dụng công nghệ giọng nói ElevenLabs</p>
+            <button onclick="startApp()" class="px-8 py-4 bg-rose-600 text-white text-xl font-bold rounded-2xl shadow-lg hover:bg-rose-500 hover:scale-105 transition transform">
+                <i class="fas fa-play mr-2"></i> Bắt đầu học
+            </button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="w-full max-w-2xl mb-6 bg-white p-4 rounded-xl shadow-lg bg-opacity-90 backdrop-blur-sm border border-rose-100">
+        <div class="flex justify-between items-center mb-3">
+            <div>
+                <!-- Removed '(AI)' text -->
+                <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-fire text-rose-600 mr-2"></i>Luyện Nghe</h1>
+                <p class="text-xs text-gray-500 mt-1">
+                    <span id="learnedCount" class="text-green-600 font-bold">0</span> thuộc / 
+                    <span id="learningCount" class="text-red-500 font-bold">0</span> chưa
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openListModal()" class="bg-rose-50 text-rose-700 px-3 py-2 rounded-lg hover:bg-rose-100 transition text-sm font-semibold" title="Danh sách từ">
+                    <i class="fas fa-list"></i>
+                </button>
+                <button onclick="document.getElementById('settingsModal').classList.remove('hidden')" class="text-gray-600 hover:text-rose-600 transition px-2" title="Cài đặt">
+                    <i class="fas fa-cog text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mode Toggle -->
+        <div class="flex p-1 bg-rose-50 rounded-lg">
+            <button onclick="resetToAll()" id="btnModeAll" class="flex-1 py-1.5 text-sm font-medium rounded-md mode-btn-active transition duration-200">
+                Tất cả (<span id="totalCountDisplay">0</span>)
+            </button>
+            <button onclick="filterNotLearned()" id="btnModeNotLearned" class="flex-1 py-1.5 text-sm font-medium rounded-md mode-btn-inactive transition duration-200">
+                Chưa thuộc (<span id="notLearnedCountDisplay">0</span>)
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Card Area -->
+    <div class="w-full max-w-2xl card-container relative h-[500px]">
+        <div id="flashcard" class="flip-card-inner w-full h-full relative">
+            
+            <!-- FRONT FACE -->
+            <div class="card-front bg-white rounded-3xl shadow-2xl flex flex-col items-center justify-center p-8 border-2 border-white relative">
+                <div id="statusBadgeFront" class="absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-bold hidden"></div>
+
+                <div class="absolute top-6 left-6 text-gray-400 font-semibold text-lg">
+                    #<span id="currentId-front">1</span>
+                </div>
+                
+                <div class="mb-8 relative">
+                    <div class="absolute -inset-4 bg-rose-100 rounded-full animate-pulse opacity-50"></div>
+                    <button onclick="playAudio()" id="playBtnFront" class="relative w-32 h-32 bg-rose-600 rounded-full flex items-center justify-center text-white shadow-xl hover:bg-rose-700 hover:scale-105 transition transform duration-200 group">
+                        <i class="fas fa-volume-up text-5xl group-hover:animate-bounce"></i>
+                    </button>
+                </div>
+                
+                <!-- Removed '(AI Voice)' text -->
+                <p class="text-gray-500 text-center mb-6 text-lg">Nhấn loa để nghe, sau đó đoán từ.</p>
+
+                <button onclick="revealCard()" class="px-8 py-3 bg-white border-2 border-rose-600 text-rose-600 font-bold rounded-full hover:bg-rose-50 transition shadow-md">
+                    <i class="fas fa-eye mr-2"></i>Hiện Đáp Án
+                </button>
+            </div>
+
+            <!-- BACK FACE -->
+            <div class="card-back bg-white rounded-3xl shadow-2xl flex flex-col items-center justify-center p-8 border-2 border-white">
+                <div class="absolute top-6 left-6 text-gray-400 font-semibold text-lg">
+                    #<span id="currentId-back">1</span>
+                </div>
+                <div class="absolute top-6 right-6">
+                    <button onclick="playAudio()" id="playBtnBack" class="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center text-rose-600 hover:bg-rose-200 transition">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                </div>
+
+                <div class="text-center w-full flex-grow flex flex-col justify-center mt-4">
+                    <h2 id="englishText" class="text-3xl md:text-4xl font-extrabold text-gray-800 mb-2 break-words">Safe</h2>
+                    <p id="posText" class="text-lg text-gray-500 font-serif italic mb-2">(adj)</p>
+                    <p id="ipaText" class="text-xl text-rose-500 font-mono mb-4">/seɪf/</p>
+                    <div class="w-16 h-1 bg-rose-200 mx-auto mb-4 rounded"></div>
+                    <p id="vietnameseText" class="text-2xl text-gray-600 font-semibold">An toàn</p>
+                </div>
+
+                <!-- Status Buttons -->
+                <div class="w-full grid grid-cols-2 gap-3 mb-4">
+                    <button onclick="markWord(false)" id="btnNotLearned" class="py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-medium transition flex items-center justify-center">
+                        <i class="fas fa-times mr-2"></i> Chưa thuộc
+                    </button>
+                    <button onclick="markWord(true)" id="btnLearned" class="py-2 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 font-medium transition flex items-center justify-center">
+                        <i class="fas fa-check mr-2"></i> Đã thuộc
+                    </button>
+                </div>
+
+                <!-- Navigation -->
+                <div class="w-full flex gap-3 pt-2 border-t border-gray-100">
+                    <button onclick="flipBack()" class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition shadow-sm flex items-center justify-center">
+                        <i class="fas fa-undo mr-2"></i> Lật lại
+                    </button>
+                    <button onclick="nextCard()" class="flex-1 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg flex items-center justify-center">
+                        Tiếp theo <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="w-full max-w-2xl mt-8 flex justify-between items-center px-4">
+        <button onclick="prevCard()" class="w-12 h-12 rounded-full bg-white shadow text-gray-600 hover:text-rose-600 flex items-center justify-center transition">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        
+        <div class="flex items-center gap-4">
+            <span class="text-gray-700 font-medium"><span id="currentIndexDisplay">1</span> / <span id="currentListTotalDisplay">200</span></span>
+            <button onclick="toggleShuffle()" id="shuffleBtn" class="w-10 h-10 rounded-full bg-white shadow text-gray-400 flex items-center justify-center transition hover:text-rose-600" title="Xáo trộn từ">
+                <i class="fas fa-random"></i>
+            </button>
+        </div>
+
+        <button onclick="nextCard()" class="w-12 h-12 rounded-full bg-white shadow text-gray-600 hover:text-rose-600 flex items-center justify-center transition">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+
+    <!-- List Modal -->
+    <div id="listModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                <h3 class="text-xl font-bold text-gray-800">Danh sách từ vựng</h3>
+                <button onclick="document.getElementById('listModal').classList.add('hidden')" class="text-gray-500 hover:text-red-500 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="flex border-b bg-white">
+                <button onclick="switchListTab('notLearned')" id="tabNotLearned" class="flex-1 py-3 text-center tab-active transition">
+                    Chưa thuộc (<span id="modalCountNotLearned">0</span>)
+                </button>
+                <button onclick="switchListTab('learned')" id="tabLearned" class="flex-1 py-3 text-center tab-inactive transition">
+                    Đã thuộc (<span id="modalCountLearned">0</span>)
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 bg-gray-50" id="listContent">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all scale-100">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Cài đặt</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nguồn âm thanh:</label>
+                <div class="p-3 bg-rose-50 text-rose-700 rounded-lg text-sm border border-rose-200">
+                    <!-- Removed 'AI' text -->
+                    <i class="fas fa-check-circle mr-1"></i> ElevenLabs (Đã kích hoạt)
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tốc độ đọc: <span id="rateValue">0.8</span>x</label>
+                <input type="range" id="rateRange" min="0.5" max="1.5" step="0.1" value="0.8" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600">
+            </div>
+            <div class="mb-4 flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700">Tự động phát khi chuyển bài</label>
+                <input type="checkbox" id="autoPlay" class="w-5 h-5 text-rose-600 rounded" checked>
+            </div>
+            <button onclick="resetAudioEngine()" class="w-full py-2 mb-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Reset Âm thanh</button>
+            <button onclick="document.getElementById('settingsModal').classList.add('hidden')" class="w-full py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700">Đóng</button>
+        </div>
+    </div>
+
+<script>
+    // --- ELEVENLABS CONFIGURATION ---
+    const ELEVENLABS_API_KEY = "72823fc092de8d14602cbb1954e366c35c4d717d52b69eaca5118acaa5569a60";
+    const ELEVENLABS_VOICE_ID = "AeRdCCKzvd23BpJoofzx"; 
+    
+    // Audio Cache to save credits (session based)
+    // FIX: Only declare this once here. Removed the second 'let audioCache' below.
+    const audioCache = {};
+
+    // DATA SOURCE: 200 WORDS
+    const vocabularyList = [
+        {id: 1, en: "Safe", pos: "(adj)", ipa: "/seɪf/", vi: "An toàn"},
+        {id: 2, en: "view", pos: "v.", ipa: "/vjuː/", vi: "nhìn, xem"},
+        {id: 3, en: "Environment", pos: "(n)", ipa: "/ɪnˈvaɪrənmənt/", vi: "Môi trường"},
+        {id: 4, en: "Rain", pos: "(n)", ipa: "/reɪn/", vi: "Mưa"},
+        {id: 5, en: "life", pos: "n.", ipa: "/laɪf/", vi: "cuộc sống"},
+        {id: 6, en: "adventure", pos: "n.", ipa: "/ədˈventʃər/", vi: "cuộc phiêu lưu"},
+        {id: 7, en: "Earth", pos: "(n)", ipa: "/ɜːθ/", vi: "Trái Đất"},
+        {id: 8, en: "Use", pos: "(v)", ipa: "/juːz/", vi: "Sử dụng"},
+        {id: 9, en: "Pollution", pos: "(n)", ipa: "/pəˈluːʃn/", vi: "Sự ô nhiễm"},
+        {id: 10, en: "Factory", pos: "(n)", ipa: "/ˈfæktri/", vi: "Nhà máy"},
+        {id: 11, en: "Bottle", pos: "(n)", ipa: "/ˈbɒtl/", vi: "Chai, lọ"},
+        {id: 12, en: "punish", pos: "v.", ipa: "/ˈpʌnɪʃ/", vi: "trừng phạt"},
+        {id: 13, en: "Recycle", pos: "(v)", ipa: "/ˌriːˈsaɪkl/", vi: "Tái chế"},
+        {id: 14, en: "football", pos: "n.", ipa: "/ˈfʊtbɔːl/", vi: "bóng đá, bóng bầu dục"},
+        {id: 15, en: "patient", pos: "adj.", ipa: "/ˈpeɪʃnt/", vi: "kiên nhẫn"},
+        {id: 16, en: "fail", pos: "v.", ipa: "/feɪl/", vi: "thất bại"},
+        {id: 17, en: "Burn", pos: "(v)", ipa: "/bɜːn/", vi: "Đốt, cháy"},
+        {id: 18, en: "Can", pos: "(n)", ipa: "/kæn/", vi: "Lon, hộp kim loại"},
+        {id: 19, en: "Global", pos: "(adj)", ipa: "/ˈɡləʊbl/", vi: "Toàn cầu"},
+        {id: 20, en: "camera", pos: "n.", ipa: "/ˈkæmrə/", vi: "máy ảnh"},
+        {id: 21, en: "Recyclable", pos: "(adj)", ipa: "/ˌriːˈsaɪkləbl/", vi: "Có thể tái chế"},
+        {id: 22, en: "shout", pos: "v.", ipa: "/ʃaʊt/", vi: "la hét"},
+        {id: 23, en: "several", pos: "adj.", ipa: "/ˈsevrəl/", vi: "một vài"},
+        {id: 24, en: "experiment", pos: "n.", ipa: "/ɪkˈsperɪmənt/", vi: "thí nghiệm"},
+        {id: 25, en: "bike", pos: "n.", ipa: "/baɪk/", vi: "xe đạp"},
+        {id: 26, en: "Turn off", pos: "(phr. v)", ipa: "/tɜːn ɒf/", vi: "Tắt (điện, nước)"},
+        {id: 27, en: "Air", pos: "(n)", ipa: "/eə(r)/", vi: "Không khí"},
+        {id: 28, en: "chart", pos: "n.", ipa: "/tʃɑːt/", vi: "biểu đồ"},
+        {id: 29, en: "Waste", pos: "(v)", ipa: "/weɪst/", vi: "Lãng phí"},
+        {id: 30, en: "Natural", pos: "(adj)", ipa: "/ˈnætʃrəl/", vi: "Thuộc về tự nhiên"},
+        {id: 31, en: "Plant", pos: "(n)", ipa: "/plɑːnt/", vi: "Thực vật, cây cối"},
+        {id: 32, en: "content", pos: "adj.", ipa: "/kənˈtent/", vi: "hài lòng, mãn nguyện"},
+        {id: 33, en: "golf", pos: "n.", ipa: "/ɡɒlf/", vi: "môn đánh gôn"},
+        {id: 34, en: "habit", pos: "n.", ipa: "/ˈhæbɪt/", vi: "thói quen"},
+        {id: 35, en: "behave", pos: "v.", ipa: "/bɪˈheɪv/", vi: "cư xử, hành xử"},
+        {id: 36, en: "spread", pos: "v.", ipa: "/spred/", vi: "lan truyền, trải ra"},
+        {id: 37, en: "Clean", pos: "(adj)", ipa: "/kliːn/", vi: "Sạch sẽ"},
+        {id: 38, en: "Waste", pos: "(n)", ipa: "/weɪst/", vi: "Rác thải, chất thải"},
+        {id: 39, en: "Plant", pos: "(v)", ipa: "/plɑːnt/", vi: "Trồng (cây)"},
+        {id: 40, en: "Breathe", pos: "(v)", ipa: "/briːð/", vi: "Hít thở"},
+        {id: 41, en: "Gas", pos: "(n)", ipa: "/ɡæs/", vi: "Khí đốt"},
+        {id: 42, en: "Fresh", pos: "(adj)", ipa: "/freʃ/", vi: "Trong lành, tươi"},
+        {id: 43, en: "Harmful", pos: "(adj)", ipa: "/ˈhɑːmfl/", vi: "Có hại"},
+        {id: 44, en: "ever", pos: "adv.", ipa: "/ˈevə(r)/", vi: "đã từng"},
+        {id: 45, en: "weight", pos: "n.", ipa: "/weɪt/", vi: "cân nặng"},
+        {id: 46, en: "Nature", pos: "(n)", ipa: "/ˈneɪtʃə(r)/", vi: "Thiên nhiên, tự nhiên"},
+        {id: 47, en: "Drop", pos: "(v)", ipa: "/drɒp/", vi: "Làm rơi, vứt"},
+        {id: 48, en: "Farm", pos: "(n)", ipa: "/fɑːm/", vi: "Nông trại"},
+        {id: 49, en: "shape", pos: "n.", ipa: "/ʃeɪp/", vi: "hình dạng"},
+        {id: 50, en: "secret", pos: "n.", ipa: "/ˈsiːkrət/", vi: "bí mật"},
+        {id: 51, en: "Quickly", pos: "(adv)", ipa: "/ˈkwɪkli/", vi: "Một cách nhanh chóng"},
+        {id: 52, en: "On", pos: "(prep)", ipa: "/ɒn/", vi: "Ở trên"},
+        {id: 53, en: "calm", pos: "adj.", ipa: "/kɑːm/", vi: "bình tĩnh"},
+        {id: 54, en: "during", pos: "prep.", ipa: "/ˈdjʊərɪŋ/", vi: "trong suốt (thời gian)"},
+        {id: 55, en: "Smoke", pos: "(n)", ipa: "/sməʊk/", vi: "Khói"},
+        {id: 56, en: "Carefully", pos: "(adv)", ipa: "/ˈkeəfəli/", vi: "Một cách cẩn thận"},
+        {id: 57, en: "loud", pos: "adj.", ipa: "/laʊd/", vi: "to, ồn ào"},
+        {id: 58, en: "Reusable", pos: "(adj)", ipa: "/ˌriːˈjuːzəbl/", vi: "Có thể tái sử dụng"},
+        {id: 59, en: "create", pos: "v.", ipa: "/kriˈeɪt/", vi: "tạo ra"},
+        {id: 60, en: "Litter", pos: "(n)", ipa: "/ˈlɪtə(r)/", vi: "Rác vụn (vứt bừa bãi)"},
+        {id: 61, en: "appropriate", pos: "adj.", ipa: "/əˈprəʊpriət/", vi: "thích hợp, phù hợp"},
+        {id: 62, en: "Never", pos: "(adv)", ipa: "/ˈnevə(r)/", vi: "Không bao giờ"},
+        {id: 63, en: "Noise", pos: "(n)", ipa: "/nɔɪz/", vi: "Tiếng ồn"},
+        {id: 64, en: "Dirty", pos: "(adj)", ipa: "/ˈdɜːti/", vi: "Bẩn, dơ"},
+        {id: 65, en: "Local", pos: "(adj)", ipa: "/ˈləʊkl/", vi: "Địa phương"},
+        {id: 66, en: "agree", pos: "v.", ipa: "/əˈɡriː/", vi: "đồng ý"},
+        {id: 67, en: "Reuse", pos: "(v)", ipa: "/ˌriːˈjuːz/", vi: "Tái sử dụng"},
+        {id: 68, en: "Solar", pos: "(adj)", ipa: "/ˈsəʊlə(r)/", vi: "(Thuộc) mặt trời"},
+        {id: 69, en: "adult", pos: "n.", ipa: "/ˈædʌlt/", vi: "người lớn, người trưởng thành"},
+        {id: 70, en: "Bag", pos: "(n)", ipa: "/bæɡ/", vi: "Cái túi"},
+        {id: 71, en: "laugh", pos: "n.", ipa: "/lɑːf/", vi: "tiếng cười"},
+        {id: 72, en: "concern", pos: "n.", ipa: "/kənˈsɜːn/", vi: "mối quan tâm, sự lo lắng"},
+        {id: 73, en: "nervous", pos: "adj.", ipa: "/ˈnɜːvəs/", vi: "lo lắng"},
+        {id: 74, en: "approach", pos: "v.", ipa: "/əˈprəʊtʃ/", vi: "tiếp cận"},
+        {id: 75, en: "Danger", pos: "(n)", ipa: "/ˈdeɪndʒə(r)/", vi: "Mối nguy hiểm"},
+        {id: 76, en: "typical", pos: "adj.", ipa: "/ˈtɪpɪkl/", vi: "điển hình, tiêu biểu"},
+        {id: 77, en: "travel", pos: "v.", ipa: "/ˈtrævl/", vi: "du lịch"},
+        {id: 78, en: "alcohol", pos: "n.", ipa: "/ˈælkəhɒl/", vi: "cồn, rượu"},
+        {id: 79, en: "choose", pos: "v.", ipa: "/tʃuːz/", vi: "lựa chọn"},
+        {id: 80, en: "Paper", pos: "(n)", ipa: "/ˈpeɪpə(r)/", vi: "Giấy"},
+        {id: 81, en: "River", pos: "(n)", ipa: "/ˈrɪvə(r)/", vi: "Con sông"},
+        {id: 82, en: "Rubbish", pos: "(n)", ipa: "/ˈrʌbɪʃ/", vi: "Rác (tương tự trash)"},
+        {id: 83, en: "Walk", pos: "(v)", ipa: "/wɔːk/", vi: "Đi bộ"},
+        {id: 84, en: "Weather", pos: "(n)", ipa: "/ˈweðə(r)/", vi: "Thời tiết"},
+        {id: 85, en: "Important", pos: "(adj)", ipa: "/ɪmˈpɔːtnt/", vi: "Quan trọng"},
+        {id: 86, en: "boat", pos: "n.", ipa: "/bəʊt/", vi: "thuyền"},
+        {id: 87, en: "visit", pos: "v.", ipa: "/ˈvɪzɪt/", vi: "thăm"},
+        {id: 88, en: "Cycle", pos: "(v)", ipa: "/ˈsaɪkl/", vi: "Đạp xe"},
+        {id: 89, en: "among", pos: "prep.", ipa: "/əˈmʌŋ/", vi: "ở giữa"},
+        {id: 90, en: "breakfast", pos: "n.", ipa: "/ˈbrekfəst/", vi: "bữa sáng"},
+        {id: 91, en: "Damage", pos: "(n)", ipa: "/ˈdæmɪdʒ/", vi: "Sự thiệt hại"},
+        {id: 92, en: "Water", pos: "(n)", ipa: "/ˈwɔːtə(r)/", vi: "Nước"},
+        {id: 93, en: "duck", pos: "n.", ipa: "/dʌk/", vi: "con vịt"},
+        {id: 94, en: "Shower", pos: "(v)", ipa: "/ˈʃaʊə(r)/", vi: "Tắm (vòi sen)"},
+        {id: 95, en: "Always", pos: "(adv)", ipa: "/ˈɔːlweɪz/", vi: "Luôn luôn"},
+        {id: 96, en: "Beach", pos: "(n)", ipa: "/biːtʃ/", vi: "Bãi biển"},
+        {id: 97, en: "worse", pos: "adj.", ipa: "/wɜːs/", vi: "tệ hơn"},
+        {id: 98, en: "Grow", pos: "(v)", ipa: "/ɡrəʊ/", vi: "Trồng, phát triển"},
+        {id: 99, en: "avoid", pos: "v.", ipa: "/əˈvɔɪd/", vi: "tránh, né tránh"},
+        {id: 100, en: "Harm", pos: "(v)", ipa: "/hɑːm/", vi: "Gây hại"},
+        {id: 101, en: "balance", pos: "n.", ipa: "/ˈbæləns/", vi: "sự cân bằng"},
+        {id: 102, en: "Rainy", pos: "(adj)", ipa: "/ˈreɪni/", vi: "Có mưa"},
+        {id: 103, en: "Animal", pos: "(n)", ipa: "/ˈænɪml/", vi: "Động vật"},
+        {id: 104, en: "week", pos: "n.", ipa: "/wiːk/", vi: "tuần"},
+        {id: 105, en: "love", pos: "v.", ipa: "/lʌv/", vi: "yêu"},
+        {id: 106, en: "Trash", pos: "(n)", ipa: "/træʃ/", vi: "Rác (thường là đồ khô)"},
+        {id: 107, en: "game", pos: "n.", ipa: "/ɡeɪm/", vi: "trò chơi"},
+        {id: 108, en: "age", pos: "n.", ipa: "/eɪdʒ/", vi: "tuổi, tuổi tác"},
+        {id: 109, en: "Healthy", pos: "(adj)", ipa: "/ˈhelθi/", vi: "Lành mạnh, khỏe"},
+        {id: 110, en: "Energy", pos: "(n)", ipa: "/ˈenədʒi/", vi: "Năng lượng"},
+        {id: 111, en: "Look after", pos: "(phr. v)", ipa: "/lʊk ˈɑːftə(r)/", vi: "Trông nom, chăm sóc"},
+        {id: 112, en: "active", pos: "adj.", ipa: "/ˈæktɪv/", vi: "năng động, tích cực"},
+        {id: 113, en: "Wind", pos: "(n)", ipa: "/wɪnd/", vi: "Gió"},
+        {id: 114, en: "positive", pos: "adj.", ipa: "/ˈpɒzətɪv/", vi: "tích cực"},
+        {id: 115, en: "suddenly", pos: "adv.", ipa: "/ˈsʌdnli/", vi: "đột ngột"},
+        {id: 116, en: "increase", pos: "v.", ipa: "/ɪnˈkriːs/", vi: "tăng lên"},
+        {id: 117, en: "Protect", pos: "(v)", ipa: "/prəˈtekt/", vi: "Bảo vệ"},
+        {id: 118, en: "Soil", pos: "(n)", ipa: "/sɔɪl/", vi: "Đất"},
+        {id: 119, en: "catch", pos: "v.", ipa: "/kætʃ/", vi: "bắt, chụp"},
+        {id: 120, en: "Glass", pos: "(n)", ipa: "/ɡlɑːs/", vi: "Thủy tinh"},
+        {id: 121, en: "bad", pos: "adj.", ipa: "/bæd/", vi: "tồi, tệ"},
+        {id: 122, en: "project", pos: "n.", ipa: "/ˈprɒdʒekt/", vi: "dự án"},
+        {id: 123, en: "instruct", pos: "v.", ipa: "/ɪnˈstrʌkt/", vi: "hướng dẫn, dạy"},
+        {id: 124, en: "solve", pos: "v.", ipa: "/sɒlv/", vi: "giải quyết"},
+        {id: 125, en: "village", pos: "n.", ipa: "/ˈvɪlɪdʒ/", vi: "làng, ngôi làng"},
+        {id: 126, en: "report", pos: "n.", ipa: "/rɪˈpɔːt/", vi: "bài báo cáo"},
+        {id: 127, en: "August", pos: "n.", ipa: "/ɔːˈɡʌst/", vi: "tháng Tám"},
+        {id: 128, en: "Plastic", pos: "(n)", ipa: "/ˈplæstɪk/", vi: "Nhựa"},
+        {id: 129, en: "Sea", pos: "(n)", ipa: "/siː/", vi: "Biển"},
+        {id: 130, en: "suppose", pos: "v.", ipa: "/səˈpəʊz/", vi: "cho rằng, giả sử"},
+        {id: 131, en: "library", pos: "n.", ipa: "/ˈlaɪbrəri/", vi: "thư viện"},
+        {id: 132, en: "Tree", pos: "(n)", ipa: "/triː/", vi: "Cây xanh"},
+        {id: 133, en: "understand", pos: "v.", ipa: "/ˌʌndəˈstænd/", vi: "hiểu"},
+        {id: 134, en: "represent", pos: "v.", ipa: "/ˌreprɪˈzent/", vi: "đại diện"},
+        {id: 135, en: "frequently", pos: "adv.", ipa: "/ˈfriːkwəntli/", vi: "thường xuyên"},
+        {id: 136, en: "evil", pos: "adj.", ipa: "/ˈiːvl/", vi: "độc ác"},
+        {id: 137, en: "Around", pos: "(prep)", ipa: "/əˈraʊnd/", vi: "Xung quanh"},
+        {id: 138, en: "describe", pos: "v.", ipa: "/dɪˈskraɪb/", vi: "mô tả"},
+        {id: 139, en: "Electricity", pos: "(n)", ipa: "/ɪˌlekˈtrɪsəti/", vi: "Điện"},
+        {id: 140, en: "Care for", pos: "(phr. v)", ipa: "/keə(r) fɔː(r)/", vi: "Chăm sóc"},
+        {id: 141, en: "Reduce", pos: "(v)", ipa: "/rɪˈdjuːs/", vi: "Cắt giảm"},
+        {id: 142, en: "often", pos: "adv.", ipa: "/ˈɒfn/", vi: "thường"},
+        {id: 143, en: "Green", pos: "(adj)", ipa: "/ɡriːn/", vi: "Xanh (liên quan đến MT)"},
+        {id: 144, en: "fun", pos: "adj.", ipa: "/fʌn/", vi: "vui vẻ"},
+        {id: 145, en: "Help", pos: "(v)", ipa: "/help/", vi: "Giúp đỡ"},
+        {id: 146, en: "Pick up", pos: "(phr. v)", ipa: "/pɪk ʌp/", vi: "Nhặt lên"},
+        {id: 147, en: "Forest", pos: "(n)", ipa: "/ˈfɒrɪst/", vi: "Khu rừng"},
+        {id: 148, en: "Sun", pos: "(n)", ipa: "/sʌn/", vi: "Mặt trời"},
+        {id: 149, en: "invite", pos: "v.", ipa: "/ɪnˈvaɪt/", vi: "mời"},
+        {id: 150, en: "Throw away", pos: "(phr. v)", ipa: "/θrəʊ əˈweɪ/", vi: "Vứt đi"},
+        {id: 151, en: "Windy", pos: "(adj)", ipa: "/ˈwɪndi/", vi: "Có gió"},
+        {id: 152, en: "kilometer", pos: "n.", ipa: "/kɪˈlɒmɪtə(r)/", vi: "ki-lô-mét"},
+        {id: 153, en: "instead", pos: "adv.", ipa: "/ɪnˈsted/", vi: "thay vì"},
+        {id: 154, en: "grade", pos: "n.", ipa: "/ɡreɪd/", vi: "điểm số"},
+        {id: 155, en: "kill", pos: "v.", ipa: "/kɪl/", vi: "giết"},
+        {id: 156, en: "alien", pos: "n.", ipa: "/ˈeɪliən/", vi: "người ngoài hành tinh"},
+        {id: 157, en: "capital", pos: "n.", ipa: "/ˈkæpɪtl/", vi: "thủ đô"},
+        {id: 158, en: "Climate", pos: "(n)", ipa: "/ˈklaɪmət/", vi: "Khí hậu"},
+        {id: 159, en: "shake", pos: "v.", ipa: "/ʃeɪk/", vi: "lắc, rung"},
+        {id: 160, en: "issue", pos: "n.", ipa: "/ˈɪʃuː/", vi: "vấn đề"},
+        {id: 161, en: "none", pos: "pron.", ipa: "/nʌn/", vi: "không ai, không cái gì"},
+        {id: 162, en: "Destroy", pos: "(v)", ipa: "/dɪˈstrɔɪ/", vi: "Phá hủy"},
+        {id: 163, en: "Flower", pos: "(n)", ipa: "/ˈflaʊə(r)/", vi: "Bông hoa"},
+        {id: 164, en: "laboratory", pos: "n.", ipa: "/ləˈbɒrətri/", vi: "phòng thí nghiệm"},
+        {id: 165, en: "cloud", pos: "n.", ipa: "/klaʊd/", vi: "đám mây"},
+        {id: 166, en: "terrible", pos: "adj.", ipa: "/ˈterəbl/", vi: "khủng khiếp, tồi tệ"},
+        {id: 167, en: "Save", pos: "(v)", ipa: "/seɪv/", vi: "Cứu, tiết kiệm"},
+        {id: 168, en: "wine", pos: "n.", ipa: "/waɪn/", vi: "rượu vang"},
+        {id: 169, en: "Ocean", pos: "(n)", ipa: "/ˈəʊʃn/", vi: "Đại dương"},
+        {id: 170, en: "smell", pos: "v.", ipa: "/smel/", vi: "ngửi"},
+        {id: 171, en: "month", pos: "n.", ipa: "/mʌnθ/", vi: "tháng"},
+        {id: 172, en: "Sort", pos: "(v)", ipa: "/sɔːt/", vi: "Phân loại"},
+        {id: 173, en: "Chemical", pos: "(n)", ipa: "/ˈkemɪkl/", vi: "Hóa chất"},
+        {id: 174, en: "enjoy", pos: "v.", ipa: "/ɪnˈdʒɔɪ/", vi: "thích thú, tận hưởng"},
+        {id: 175, en: "heart", pos: "n.", ipa: "/hɑːt/", vi: "trái tim"},
+        {id: 176, en: "Drive", pos: "(v)", ipa: "/draɪv/", vi: "Lái xe"},
+        {id: 177, en: "plenty", pos: "pron.", ipa: "/ˈplenti/", vi: "nhiều"},
+        {id: 178, en: "expect", pos: "v.", ipa: "/ɪkˈspekt/", vi: "mong đợi, kỳ vọng"},
+        {id: 179, en: "arrive", pos: "v.", ipa: "/əˈraɪv/", vi: "đến nơi"},
+        {id: 180, en: "Fire", pos: "(n)", ipa: "/ˈfaɪə(r)/", vi: "Lửa"},
+        {id: 181, en: "Clean", pos: "(v)", ipa: "/kliːn/", vi: "Dọn dẹp, làm sạch"},
+        {id: 182, en: "Mountain", pos: "(n)", ipa: "/ˈmaʊntən/", vi: "Ngọn núi"},
+        {id: 183, en: "doctor", pos: "n.", ipa: "/ˈdɒktə(r)/", vi: "bác sĩ"},
+        {id: 184, en: "scare", pos: "v.", ipa: "/skeə(r)/", vi: "làm sợ hãi"},
+        {id: 185, en: "In", pos: "(prep)", ipa: "/ɪn/", vi: "Ở trong"},
+        {id: 186, en: "Bin", pos: "(n)", ipa: "/bɪn/", vi: "Thùng rác"},
+        {id: 187, en: "photograph", pos: "n.", ipa: "/ˈfəʊtəɡrɑːf/", vi: "bức ảnh"},
+        {id: 188, en: "Collect", pos: "(v)", ipa: "/kəˈlekt/", vi: "Thu gom"},
+        {id: 189, en: "stroll", pos: "v.", ipa: "/strəʊl/", vi: "đi dạo"},
+        {id: 190, en: "Planet", pos: "(n)", ipa: "/ˈplænɪt/", vi: "Hành tinh"},
+        {id: 191, en: "Field", pos: "(n)", ipa: "/fiːld/", vi: "Cánh đồng"},
+        {id: 192, en: "Polluted", pos: "(adj)", ipa: "/pəˈluːtɪd/", vi: "Bị ô nhiễm"},
+        {id: 193, en: "Slowly", pos: "(adv)", ipa: "/ˈsləʊli/", vi: "Một cách chậm rãi"},
+        {id: 194, en: "Sunny", pos: "(adj)", ipa: "/ˈsʌni/", vi: "Có nắng"},
+        {id: 195, en: "history", pos: "(n)", ipa: "/ˈhɪstri/", vi: "lịch sử"},
+        {id: 196, en: "past", pos: "(n)", ipa: "/pɑːst/", vi: "quá khứ"},
+        {id: 197, en: "king", pos: "(n)", ipa: "/kɪŋ/", vi: "vua"},
+        {id: 198, en: "queen", pos: "(n)", ipa: "/kwiːn/", vi: "nữ hoàng"},
+        {id: 199, en: "castle", pos: "(n)", ipa: "/ˈkɑːsl/", vi: "lâu đài"},
+        {id: 200, en: "war", pos: "(n)", ipa: "/wɔː(r)/", vi: "chiến tranh"}
+    ];
+
+    // STATE VARIABLES
+    let currentList = [...vocabularyList];
+    let progressMap = {};
+    let currentIndex = 0;
+    let isRevealed = false;
+    let isShuffled = false;
+    let hasStarted = false;
+    let isFilteredMode = false;
+    let synth = window.speechSynthesis;
+    let voices = [];
+    let audioContext; 
+
+    // DOM ELEMENTS
+    const flashcard = document.getElementById('flashcard');
+    const englishText = document.getElementById('englishText');
+    const posText = document.getElementById('posText'); 
+    const ipaText = document.getElementById('ipaText');
+    const vietnameseText = document.getElementById('vietnameseText');
+    const currentIdFront = document.getElementById('currentId-front');
+    const currentIdBack = document.getElementById('currentId-back');
+    const currentIndexDisplay = document.getElementById('currentIndexDisplay');
+    const currentListTotalDisplay = document.getElementById('currentListTotalDisplay');
+    const shuffleBtn = document.getElementById('shuffleBtn');
+    const playBtnFront = document.getElementById('playBtnFront');
+    const playBtnBack = document.getElementById('playBtnBack');
+    const rateRange = document.getElementById('rateRange');
+    const rateValue = document.getElementById('rateValue');
+    const autoPlayCheck = document.getElementById('autoPlay');
+    const startOverlay = document.getElementById('startOverlay');
+    const statusBadgeFront = document.getElementById('statusBadgeFront');
+    
+    const totalCountDisplay = document.getElementById('totalCountDisplay');
+    const notLearnedCountDisplay = document.getElementById('notLearnedCountDisplay');
+    const learnedCountEl = document.getElementById('learnedCount');
+    const learningCountEl = document.getElementById('learningCount');
+    const btnModeAll = document.getElementById('btnModeAll');
+    const btnModeNotLearned = document.getElementById('btnModeNotLearned');
+    const btnLearned = document.getElementById('btnLearned');
+    const btnNotLearned = document.getElementById('btnNotLearned');
+    const listModal = document.getElementById('listModal');
+    const listContent = document.getElementById('listContent');
+    const tabNotLearned = document.getElementById('tabNotLearned');
+    const tabLearned = document.getElementById('tabLearned');
+    const modalCountNotLearned = document.getElementById('modalCountNotLearned');
+    const modalCountLearned = document.getElementById('modalCountLearned');
+    let currentListTab = 'notLearned';
+
+    window.onload = function() {
+        loadProgress();
+        updateStats(); 
+        updateCard(false); 
+    };
+
+    function loadProgress() {
+        const saved = localStorage.getItem('vocab_progress_1_200');
+        if (saved) {
+            progressMap = JSON.parse(saved);
+        }
+    }
+
+    function saveProgress() {
+        localStorage.setItem('vocab_progress_1_200', JSON.stringify(progressMap));
+        updateStats();
+    }
+
+    function updateStats() {
+        const total = vocabularyList.length;
+        const learned = vocabularyList.filter(item => progressMap[item.id] === true).length;
+        const notLearned = total - learned;
+        
+        learnedCountEl.textContent = learned;
+        learningCountEl.textContent = notLearned;
+        
+        modalCountLearned.textContent = learned;
+        modalCountNotLearned.textContent = notLearned;
+
+        totalCountDisplay.textContent = total;
+        notLearnedCountDisplay.textContent = notLearned;
+    }
+
+    function resetToAll() {
+        currentList = [...vocabularyList];
+        currentIndex = 0;
+        isFilteredMode = false;
+        
+        btnModeAll.className = "flex-1 py-1.5 text-sm font-medium rounded-md mode-btn-active transition duration-200";
+        btnModeNotLearned.className = "flex-1 py-1.5 text-sm font-medium rounded-md mode-btn-inactive transition duration-200";
+        
+        if(isShuffled) toggleShuffle();
+        else updateCard(false);
+    }
+
+    function filterNotLearned() {
+        const notLearnedList = vocabularyList.filter(item => progressMap[item.id] !== true);
+        
+        if (notLearnedList.length === 0) {
+            alert("Chúc mừng! Bạn đã thuộc hết 200 từ vựng.");
+            return;
+        }
+
+        currentList = notLearnedList;
+        currentIndex = 0;
+        isFilteredMode = true;
+        
+        btnModeAll.className = "flex-1 py-1.5 text-sm font-medium rounded-md mode-btn-inactive transition duration-200";
+        btnModeNotLearned.className = "flex-1 py-1.5 text-sm font-medium rounded-md mode-btn-active transition duration-200";
+
+        if(isShuffled) toggleShuffle(); 
+        else updateCard(false);
+    }
+
+    function startApp() {
+        startOverlay.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => startOverlay.style.display = 'none', 500);
+        hasStarted = true;
+        playAudio();
+    }
+
+    // --- AUDIO HANDLING ---
+
+    async function playAudio() {
+        const item = currentList[currentIndex];
+        const text = item.en;
+        
+        // Show Loading State
+        setLoadingState(true);
+
+        try {
+            // 1. Check Cache first
+            if (audioCache[text]) {
+                await playBlob(audioCache[text]);
+                setLoadingState(false);
+                return;
+            }
+
+            // 2. Try ElevenLabs API
+            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+                method: 'POST',
+                headers: {
+                    'xi-api-key': ELEVENLABS_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    model_id: "eleven_monolingual_v1",
+                    voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+                })
+            });
+
+            if (!response.ok) throw new Error('ElevenLabs API failed');
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            audioCache[text] = url; // Cache it
+            await playBlob(url);
+
+        } catch (error) {
+            console.warn("Falling back to Browser TTS", error);
+            // 3. Fallback to Browser TTS
+            speakBrowser(text);
+        } finally {
+            setLoadingState(false);
+        }
+    }
+
+    function playBlob(url) {
+        return new Promise((resolve) => {
+            const audio = new Audio(url);
+            // Apply speed from slider
+            const speed = parseFloat(document.getElementById('rateRange').value);
+            audio.playbackRate = speed;
+            
+            audio.onended = resolve;
+            audio.play();
+        });
+    }
+
+    function speakBrowser(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = parseFloat(document.getElementById('rateRange').value);
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function setLoadingState(isLoading) {
+        const iconClass = isLoading ? "fas fa-spinner" : "fas fa-volume-up";
+        const btnClass = isLoading ? "cursor-wait opacity-75" : "hover:scale-105";
+        
+        // Update both buttons
+        [playBtnFront, playBtnBack].forEach(btn => {
+            const icon = btn.querySelector('i');
+            icon.className = `${iconClass} text-5xl`; // Reset size
+            if(isLoading) btn.classList.add('cursor-wait');
+            else btn.classList.remove('cursor-wait');
+        });
+    }
+
+    // GAME LOGIC
+    function updateCard(shouldPlay = true) {
+        flashcard.classList.remove('revealed');
+        isRevealed = false;
+        
+        const item = currentList[currentIndex];
+        
+        englishText.textContent = item.en;
+        vietnameseText.textContent = item.vi;
+        currentIdFront.textContent = item.id;
+        currentIdBack.textContent = item.id;
+        currentIndexDisplay.textContent = currentIndex + 1;
+        currentListTotalDisplay.textContent = currentList.length;
+
+        if (item.pos) { posText.textContent = item.pos; posText.style.display = 'block'; } else { posText.style.display = 'none'; }
+        if (item.ipa) { ipaText.textContent = item.ipa; ipaText.style.display = 'block'; } else { ipaText.style.display = 'none'; }
+
+        updateStatusUI(item.id);
+
+        if(autoPlayCheck.checked && shouldPlay && hasStarted) {
+            setTimeout(() => playAudio(), 600);
+        }
+    }
+
+    function updateStatusUI(id) {
+        const isLearned = progressMap[id] === true;
+        
+        if (isLearned) {
+            btnLearned.classList.add('bg-emerald-100', 'border-emerald-400');
+            btnNotLearned.classList.remove('bg-red-100', 'border-red-400');
+            statusBadgeFront.textContent = "Đã thuộc";
+            statusBadgeFront.className = "absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200";
+            statusBadgeFront.classList.remove('hidden');
+        } else {
+            btnNotLearned.classList.add('bg-red-100', 'border-red-400');
+            btnLearned.classList.remove('bg-emerald-100', 'border-emerald-400');
+            if(progressMap[id] === false) {
+                 statusBadgeFront.textContent = "Chưa thuộc";
+                 statusBadgeFront.className = "absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200";
+                 statusBadgeFront.classList.remove('hidden');
+            } else {
+                 statusBadgeFront.classList.add('hidden');
+            }
+        }
+    }
+
+    function markWord(learned) {
+        const item = currentList[currentIndex];
+        progressMap[item.id] = learned;
+        saveProgress();
+        updateStatusUI(item.id);
+        updateStats(); 
+    }
+
+    function revealCard() {
+        if(!isRevealed) {
+            flashcard.classList.add('revealed');
+            isRevealed = true;
+        }
+    }
+
+    function flipBack() {
+        flashcard.classList.remove('revealed');
+        isRevealed = false;
+    }
+
+    function nextCard() {
+        if (currentIndex < currentList.length - 1) { currentIndex++; } else { currentIndex = 0; }
+        updateCard(true);
+    }
+
+    function prevCard() {
+        if (currentIndex > 0) { currentIndex--; }
+        updateCard(true);
+    }
+
+    function toggleShuffle() {
+        isShuffled = !isShuffled;
+        if (isShuffled) {
+            shuffleBtn.classList.add('text-rose-600', 'bg-rose-50');
+            shuffleBtn.classList.remove('text-gray-400');
+            for (let i = currentList.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [currentList[i], currentList[j]] = [currentList[j], currentList[i]];
+            }
+        } else {
+            shuffleBtn.classList.remove('text-rose-600', 'bg-rose-50');
+            shuffleBtn.classList.add('text-gray-400');
+            if (!isFilteredMode) {
+                currentList.sort((a, b) => a.id - b.id);
+            } else {
+                currentList.sort((a, b) => a.id - b.id);
+            }
+        }
+        currentIndex = 0;
+        updateCard(true);
+    }
+
+    function openListModal() {
+        renderList();
+        listModal.classList.remove('hidden');
+    }
+
+    function switchListTab(tab) {
+        currentListTab = tab;
+        if(tab === 'notLearned') {
+            tabNotLearned.className = 'flex-1 py-3 text-center tab-active transition';
+            tabLearned.className = 'flex-1 py-3 text-center tab-inactive transition';
+        } else {
+            tabNotLearned.className = 'flex-1 py-3 text-center tab-inactive transition';
+            tabLearned.className = 'flex-1 py-3 text-center tab-active transition';
+        }
+        renderList();
+    }
+
+    function renderList() {
+        listContent.innerHTML = '';
+        const targetState = currentListTab === 'learned'; 
+        const filteredList = vocabularyList.filter(item => {
+            const status = progressMap[item.id];
+            if (targetState) return status === true;
+            else return status !== true;
+        });
+
+        if (filteredList.length === 0) {
+            listContent.innerHTML = '<div class="text-center text-gray-500 mt-10">Danh sách trống</div>';
+            return;
+        }
+
+        filteredList.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "bg-white p-4 rounded-xl border border-rose-100 mb-3 flex justify-between items-center shadow-sm hover:shadow-md transition";
+            div.innerHTML = `
+                <div class="flex-1 pr-4">
+                    <h4 class="font-bold text-gray-800 text-lg mb-1">${item.en}</h4>
+                    <p class="text-gray-500 text-sm">${item.vi}</p>
+                </div>
+                <div class="flex gap-2 flex-shrink-0">
+                     <button onclick="playListAudio('${item.en.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    ${targetState ? 
+                        `<button onclick="toggleListStatus(${item.id}, false)" class="text-xs px-3 py-1 bg-red-50 text-red-600 rounded border border-red-200 hover:bg-red-100 whitespace-nowrap">Bỏ thuộc</button>` :
+                        `<button onclick="toggleListStatus(${item.id}, true)" class="text-xs px-3 py-1 bg-emerald-50 text-emerald-600 rounded border border-emerald-200 hover:bg-emerald-100 whitespace-nowrap">Đã thuộc</button>`
+                    }
+                </div>
+            `;
+            listContent.appendChild(div);
+        });
+    }
+
+    function toggleListStatus(id, status) {
+        progressMap[id] = status;
+        saveProgress();
+        renderList(); 
+        if (currentList[currentIndex].id === id) {
+            updateStatusUI(id); 
+        }
+    }
+
+    // Modified to use the new playAudio logic
+    async function playListAudio(text) {
+        try {
+            if (audioCache[text]) {
+                await playBlob(audioCache[text]);
+                return;
+            }
+            speakBrowser(text); 
+        } catch (e) {
+            speakBrowser(text);
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(!hasStarted) return;
+        if (e.code === 'Space') { e.preventDefault(); playAudio(); }
+        else if (e.code === 'Enter') { if (!isRevealed) revealCard(); else nextCard(); }
+        else if (e.code === 'ArrowRight') nextCard();
+        else if (e.code === 'ArrowLeft') prevCard();
+    });
+
+</script>
+</body>
+</html>
