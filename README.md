@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio From 1 to 200 (System Voice)</title>
+    <title>Audio From 1 to 200 (Online Hybrid)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -102,7 +102,7 @@
                 <i class="fas fa-headphones-alt"></i>
             </div>
             <h2 class="text-3xl font-bold text-white mb-4">Vocabulary 1-200</h2>
-            <p class="text-rose-200 mb-8">Giọng đọc Hệ thống (Ổn định & Mượt mà)</p>
+            <p class="text-rose-200 mb-8">Chế độ Hybrid (Online + Offline)</p>
             <button onclick="startApp()" class="px-8 py-4 bg-rose-600 text-white text-xl font-bold rounded-2xl shadow-lg hover:bg-rose-500 hover:scale-105 transition transform">
                 <i class="fas fa-play mr-2"></i> Bắt đầu học
             </button>
@@ -256,19 +256,22 @@
         <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all scale-100">
             <h3 class="text-xl font-bold text-gray-800 mb-4">Cài đặt</h3>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Nguồn âm thanh:</label>
-                <div class="p-3 bg-rose-50 text-rose-700 rounded-lg text-sm border border-rose-200 font-semibold">
-                    <i class="fas fa-volume-up mr-1"></i> Giọng đọc Hệ thống
+                <label class="block text-sm font-medium text-gray-700 mb-2">Chế độ âm thanh:</label>
+                <div class="p-3 bg-rose-50 text-rose-700 rounded-lg text-sm border border-rose-200">
+                    <i class="fas fa-magic mr-1"></i> <strong>Hybrid (Lai):</strong>
+                    <ul class="list-disc ml-5 mt-1 text-xs text-gray-600">
+                        <li>Ưu tiên: Google (Online) - Hay & Chuẩn</li>
+                        <li>Dự phòng: Hệ thống (Offline) - Ổn định</li>
+                    </ul>
                 </div>
             </div>
              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Chọn giọng đọc:</label>
-                <select id="voiceSelect" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-500 outline-none"><option>Đang tải danh sách giọng...</option></select>
-                <p class="text-xs text-gray-500 mt-2 italic">* Nếu muốn đổi giọng khác, hãy chọn ở đây.</p>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Chọn giọng dự phòng (Offline):</label>
+                <select id="voiceSelect" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-500 outline-none"><option>Đang tải...</option></select>
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tốc độ đọc: <span id="rateValue">0.6</span>x</label>
-                <input type="range" id="rateRange" min="0.4" max="1.2" step="0.1" value="0.6" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600 cursor-pointer">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tốc độ đọc: <span id="rateValue">0.7</span>x</label>
+                <input type="range" id="rateRange" min="0.4" max="1.2" step="0.1" value="0.7" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600 cursor-pointer">
             </div>
             <div class="mb-4 flex items-center justify-between">
                 <label class="text-sm font-medium text-gray-700">Tự động phát khi chuyển bài</label>
@@ -577,6 +580,7 @@
         notLearnedCountDisplay.textContent = notLearned;
     }
 
+    // MODE FUNCTIONS
     function resetToAll() {
         currentList = [...vocabularyList];
         currentIndex = 0;
@@ -593,7 +597,7 @@
         const notLearnedList = vocabularyList.filter(item => progressMap[item.id] !== true);
         
         if (notLearnedList.length === 0) {
-            showToast("Chúc mừng! Bạn đã thuộc hết 200 từ vựng.");
+            alert("Chúc mừng! Bạn đã thuộc hết 200 từ vựng.");
             return;
         }
 
