@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio From 1 to 200 (Universal)</title>
+    <title>Audio From 1 to 200 (Google TTS)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -102,7 +102,7 @@
                 <i class="fas fa-headphones-alt"></i>
             </div>
             <h2 class="text-3xl font-bold text-white mb-4">Vocabulary 1-200</h2>
-            <p class="text-rose-200 mb-8">Giọng đọc Hệ thống (Tương thích mọi thiết bị)</p>
+            <p class="text-rose-200 mb-8">Giọng Google Translate (Anh - Anh)</p>
             <button onclick="startApp()" class="px-8 py-4 bg-rose-600 text-white text-xl font-bold rounded-2xl shadow-lg hover:bg-rose-500 hover:scale-105 transition transform">
                 <i class="fas fa-play mr-2"></i> Bắt đầu học
             </button>
@@ -258,16 +258,16 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Nguồn âm thanh:</label>
                 <div class="p-3 bg-rose-50 text-rose-700 rounded-lg text-sm border border-rose-200 font-semibold">
-                    <i class="fas fa-laptop mr-1"></i> Giọng đọc Hệ thống (Tương thích cao)
+                    <i class="fab fa-google mr-1"></i> Google Translate (Anh - Anh)
                 </div>
             </div>
              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Chọn giọng đọc:</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Giọng dự phòng (Khi mất mạng):</label>
                 <select id="voiceSelect" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50"><option>Đang tải...</option></select>
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tốc độ đọc: <span id="rateValue">0.6</span>x</label>
-                <input type="range" id="rateRange" min="0.4" max="1.2" step="0.1" value="0.6" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tốc độ đọc: <span id="rateValue">0.7</span>x</label>
+                <input type="range" id="rateRange" min="0.5" max="1.5" step="0.1" value="0.7" class="w-full h-2 bg-rose-200 rounded-lg accent-rose-600">
             </div>
             <div class="mb-4 flex items-center justify-between">
                 <label class="text-sm font-medium text-gray-700">Tự động phát khi chuyển bài</label>
@@ -529,26 +529,19 @@
     const tabLearned = document.getElementById('tabLearned');
     const modalCountNotLearned = document.getElementById('modalCountNotLearned');
     const modalCountLearned = document.getElementById('modalCountLearned');
-    const voiceSelect = document.getElementById('voiceSelect'); // Added back for system voice selection
+    const voiceSelect = document.getElementById('voiceSelect'); // Re-added global voiceSelect
 
     // INITIALIZATION
     window.onload = function() {
         loadProgress();
         updateStats(); 
-        loadVoices(); // Initial voice load
-        
-        // Polling for voices as they load async
-        let voiceLoadAttempts = 0;
-        const voiceInterval = setInterval(() => {
-            if (voices.length === 0 && voiceLoadAttempts < 10) {
-                loadVoices();
-                voiceLoadAttempts++;
-            } else {
-                clearInterval(voiceInterval);
-            }
-        }, 500);
-
         updateCard(false); 
+        
+        // Wait for voices
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadVoices;
+        }
+        loadVoices(); // Initial try
     };
 
     function showToast(message) {
@@ -622,60 +615,56 @@
         playAudio();
     }
 
-    // --- AUDIO HANDLING (SYSTEM ONLY) ---
+    // --- AUDIO HANDLING ---
 
-    function playAudio() {
+    async function playAudio() {
         const item = currentList[currentIndex];
         const text = item.en;
-        speakBrowser(text);
+        
+        setLoadingState(true);
+
+        try {
+            await playGoogleTTS(text);
+        } catch (error) {
+            console.warn("Google TTS failed, using System Fallback", error);
+            // Fallback to system voice if Google fails (e.g. offline)
+            speakBrowser(text);
+        } finally {
+            setLoadingState(false);
+        }
+    }
+
+    function playGoogleTTS(text) {
+        return new Promise((resolve, reject) => {
+            // Google Translate TTS (client=tw-ob public API)
+            // tl=en-GB -> British English
+            const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en-GB&q=${encodeURIComponent(text)}`;
+            const audio = new Audio(url);
+            
+            const speed = parseFloat(document.getElementById('rateRange').value);
+            audio.playbackRate = speed;
+
+            audio.onended = resolve;
+            audio.onerror = reject;
+            
+            audio.play().catch(reject);
+        });
     }
 
     function speakBrowser(text) {
         if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
         
-        if (voices.length === 0) loadVoices();
-
         const utterance = new SpeechSynthesisUtterance(text);
         
-        // --- STRICT BRITISH VOICE SELECTION ---
-        // Priority list for British voices
-        const preferredVoices = [
-            "Google UK English Female",
-            "Google UK English Male", 
-            "Microsoft Hazel", 
-            "Microsoft Susan",
-            "Microsoft George",
-            "Daniel"
-        ];
-
-        let selectedVoice = null;
-        
-        // 1. Try preferred names first
-        for (const name of preferredVoices) {
-            const found = voices.find(v => v.name.includes(name));
-            if (found) {
-                selectedVoice = found;
-                break;
-            }
+        // Use user selected voice if available
+        const selectedVoiceName = voiceSelect.value;
+        if(selectedVoiceName) {
+            const voice = voices.find(v => v.name === selectedVoiceName);
+            if (voice) utterance.voice = voice;
         }
 
-        // 2. Try generic 'GB' or 'UK' if specific ones not found
-        if (!selectedVoice) {
-            selectedVoice = voices.find(v => v.lang.includes("GB") || v.name.includes("UK") || v.name.includes("Great Britain"));
-        }
-
-        if(selectedVoice) {
-            utterance.voice = selectedVoice;
-        } else {
-            // Absolute fallback lang code if no voice object found
-            utterance.lang = 'en-GB'; 
-        }
-
-        // --- SPEED SETTING ---
-        const speed = parseFloat(document.getElementById('rateRange').value);
-        utterance.rate = speed;
-
+        utterance.rate = parseFloat(document.getElementById('rateRange').value);
         window.speechSynthesis.speak(utterance);
     }
 
@@ -684,10 +673,8 @@
         voices = synth.getVoices();
         
         if(!voiceSelect) return;
-        
         voiceSelect.innerHTML = '';
         
-        // Filter English voices
         const englishVoices = voices.filter(v => v.lang.startsWith('en'));
 
         // Sort: Prioritize "UK/British"
@@ -705,25 +692,22 @@
             voiceSelect.appendChild(option);
         });
 
-        // Smart Select in Dropdown
+        // Smart Select: Default to first (which is British due to sort)
         if (englishVoices.length > 0) {
-            // Auto-select the first voice (which is sorted to be British)
             voiceSelect.value = englishVoices[0].name;
         }
     }
 
-    if (speechSynthesis && speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = loadVoices;
-    }
-
-    voiceSelect.addEventListener('change', () => { if(hasStarted) speakBrowser("Hello."); });
-    rateRange.addEventListener('input', (e) => { rateValue.textContent = e.target.value; });
-
-    function resetAudioEngine() {
-        if (!synth) return;
-        synth.cancel();
-        loadVoices();
-        showToast("Đã reset bộ phát âm thanh.");
+    function setLoadingState(isLoading) {
+        const iconClass = isLoading ? "fas fa-spinner" : "fas fa-volume-up";
+        const btnClass = isLoading ? "cursor-wait opacity-75" : "hover:scale-105";
+        
+        [playBtnFront, playBtnBack].forEach(btn => {
+            const icon = btn.querySelector('i');
+            icon.className = `${iconClass} text-5xl`; 
+            if(isLoading) btn.classList.add('cursor-wait');
+            else btn.classList.remove('cursor-wait');
+        });
     }
 
     // GAME LOGIC
@@ -746,7 +730,6 @@
         updateStatusUI(item.id);
 
         if(autoPlayCheck.checked && shouldPlay && hasStarted) {
-            // Small delay for flip animation before audio
             setTimeout(() => playAudio(), 600);
         }
     }
@@ -865,7 +848,7 @@
                     <p class="text-gray-500 text-sm">${item.vi}</p>
                 </div>
                 <div class="flex gap-2 flex-shrink-0">
-                     <button onclick="speakBrowser('${item.en.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition">
+                     <button onclick="playGoogleTTS('${item.en.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition">
                         <i class="fas fa-volume-up"></i>
                     </button>
                     ${targetState ? 
@@ -886,6 +869,9 @@
             updateStatusUI(id); 
         }
     }
+
+    voiceSelect.addEventListener('change', () => { if(hasStarted) speakBrowser("Hello."); });
+    rateRange.addEventListener('input', (e) => { rateValue.textContent = e.target.value; });
 
     document.addEventListener('keydown', (e) => {
         if(!hasStarted) return;
